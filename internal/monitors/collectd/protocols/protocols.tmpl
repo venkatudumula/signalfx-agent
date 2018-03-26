@@ -16,7 +16,7 @@ LoadPlugin protocols
       Plugin "^protocols$" 
     </Match> 
     <Target "set"> 
-      MetaData "monitorID" "{{.MonitorID}}" 
+      Host "[monitorID={{.MonitorID}}]"
     </Target> 
   </Rule> 
 </Chain>

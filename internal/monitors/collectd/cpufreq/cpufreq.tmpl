@@ -6,7 +6,7 @@ LoadPlugin cpufreq
       Plugin "^cpufreq$" 
     </Match> 
     <Target "set"> 
-      MetaData "monitorID" "{{.MonitorID}}" 
+      Host "[monitorID={{.MonitorID}}]"
     </Target> 
   </Rule> 
 </Chain>

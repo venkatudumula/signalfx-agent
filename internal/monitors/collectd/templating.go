@@ -82,16 +82,20 @@ func InjectTemplateFuncs(tmpl *template.Template) *template.Template {
 			"sliceOf": func(values ...interface{}) []interface{} {
 				return values
 			},
-			// Encodes dimensions in our "key=value,..." encoding that gets put
-			// in the collectd plugin_instance
-			"encodeDimsForPluginInstance": func(dims ...map[string]string) (string, error) {
+			// Encodes dimensions in our "[key=value,...]" encoding that gets put
+			// in various collectd fields.  Includes the square brackets too.
+			"encodeDimsWithBrackets": func(dims ...map[string]string) (string, error) {
 				var encoded []string
 				for i := range dims {
 					for key, val := range dims[i] {
 						encoded = append(encoded, key+"="+val)
 					}
 				}
-				return strings.Join(encoded, ","), nil
+				if len(encoded) == 0 {
+					return "", nil
+				}
+
+				return "[" + strings.Join(encoded, ",") + "]", nil
 			},
 			// Encode dimensions for use in an ingest URL
 			"encodeDimsAsQueryString": func(dims map[string]string) (string, error) {

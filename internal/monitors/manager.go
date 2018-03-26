@@ -58,7 +58,7 @@ func NewMonitorManager(agentMeta *meta.AgentMeta) *MonitorManager {
 // Configure receives a list of monitor configurations.  It will start up any
 // static monitors and watch discovered services to see if any match dynamic
 // monitors.
-func (mm *MonitorManager) Configure(confs []config.MonitorConfig, collectdConf *config.CollectdConfig, intervalSeconds int) {
+func (mm *MonitorManager) Configure(confs []config.MonitorConfig, collectdConf *config.CollectdConfig, intervalSeconds int) error {
 	mm.lock.Lock()
 	defer mm.lock.Unlock()
 
@@ -71,14 +71,17 @@ func (mm *MonitorManager) Configure(confs []config.MonitorConfig, collectdConf *
 
 	newConfig, deletedHashes := diffNewConfig(confs, mm.allConfigHashes())
 
-	// By configuring collectd with the monitor manager, we absolve the monitor
-	// instances of having to know about collectd config, which makes it easier
-	// to create monitor config from disparate sources such as from observers.
-	if err := collectd.ConfigureMainCollectd(collectdConf); err != nil {
-		log.WithFields(log.Fields{
-			"error":          err,
-			"collectdConfig": spew.Sdump(collectdConf),
-		}).Error("Could not configure collectd")
+	if !collectdConf.DisableCollectd {
+		// By configuring collectd in the monitor manager, we absolve the monitor
+		// instances of having to know about collectd config, which makes it easier
+		// to create monitor config from disparate sources such as from observers.
+		if err := collectd.ConfigureMainCollectd(collectdConf); err != nil {
+			log.WithFields(log.Fields{
+				"error":          err,
+				"collectdConfig": spew.Sdump(collectdConf),
+			}).Error("Could not configure collectd")
+			return err
+		}
 	}
 
 	for _, hash := range deletedHashes {
@@ -110,6 +113,7 @@ func (mm *MonitorManager) Configure(confs []config.MonitorConfig, collectdConf *
 
 		mm.monitorConfigs[hash] = monConfig
 	}
+	return nil
 }
 
 func (mm *MonitorManager) allConfigHashes() map[uint64]bool {

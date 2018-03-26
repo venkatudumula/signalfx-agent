@@ -268,13 +268,19 @@ type CollectdConfig struct {
 	// monitors do not support overridding the interval at the monitor level,
 	// but this setting will apply to them.
 	IntervalSeconds int `yaml:"intervalSeconds" default:"0"`
-	// The local IP address of the server that the agent exposes to which
-	// collectd will send metrics.  This defaults to an arbitrary address in
-	// the localhost subnet, but can be overridden if needed.
-	WriteServerIPAddr string `yaml:"writeServerIPAddr" default:"127.9.8.7"`
-	// The port of the agent's collectd metric sink server.  If set to zero
-	// (the default) it will allow the OS to assign it a free port.
-	WriteServerPort uint16 `yaml:"writeServerPort" default:"0"`
+	// Whether to send metrics from collectd to the agent using the write_http
+	// plugin.  If false, metrics are sent using the network plugin, which is a
+	// binary, UDP based protocol that should be more performant than the JSON
+	// encoded write_http protocol.
+	UseWriteHTTP bool `yaml:"useWriteHTTP"`
+	// The local IP address of the server(s) that the agent exposes to which
+	// collectd will send metrics.  This defaults to a certain address in the
+	// localhost subnet, but can be overridden if needed.
+	WriteServerIPAddr string `yaml:"writeServerIPAddr" default:"127.9.8.1"`
+	// The port of the agent's collectd metric sink server. If this conflicts
+	// with something on your system, you can override it here to something
+	// else.
+	WriteServerPort uint16 `yaml:"writeServerPort" default:"25826"`
 	// This is where the agent will write the collectd config files that it
 	// manages.  If you have secrets in those files, consider setting this to a
 	// path on a tmpfs mount.  The files in this directory should be considered
@@ -288,9 +294,10 @@ type CollectdConfig struct {
 	HasGenericJMXMonitor bool   `yaml:"-"`
 	// Assigned by manager, not by user
 	InstanceName string `yaml:"-"`
-	// A hack to allow custom collectd to easily specify a single monitorID via
-	// query parameter
-	WriteServerQuery string `yaml:"-"`
+	// Extra dimensions that get injected using our square bracket encoding in
+	// the collectd Hostname config.  This should only be used by collectd/custom
+	// instances.
+	ExtraDimensions map[string]string `yaml:"-"`
 }
 
 // Validate the collectd specific config

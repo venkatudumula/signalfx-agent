@@ -13,12 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/signalfx/golib/datapoint"
-	"github.com/signalfx/golib/event"
 	"github.com/signalfx/signalfx-agent/internal/core/config"
 	"github.com/signalfx/signalfx-agent/internal/monitors/types"
 	"github.com/signalfx/signalfx-agent/internal/utils"
@@ -43,15 +40,11 @@ const (
 // Manager coordinates the collectd conf file and running the embedded collectd
 // library.
 type Manager struct {
-	configMutex sync.Mutex
-	conf        *config.CollectdConfig
-	// Map of each active monitor to its output instance
-	activeMonitors  map[types.MonitorID]types.Output
+	configMutex     sync.Mutex
+	conf            *config.CollectdConfig
+	monitorCount    int
 	genericJMXUsers map[types.MonitorID]bool
 	active          bool
-	// The port of the active write server, will be 0 if write server isn't
-	// started yet.
-	writeServerPort int
 
 	// Channels to control the state machine asynchronously
 	stop chan struct{}
@@ -62,15 +55,40 @@ type Manager struct {
 	logger *log.Entry
 }
 
-var collectdSingleton *Manager
+var globalCollectd *Manager
+
+// Only make one instance of the write server shared across all collectd
+// instances.
+var writeServer *WriteServer
 
 // MainInstance returns the global singleton instance of the collectd manager
 func MainInstance() *Manager {
-	if collectdSingleton == nil {
+	if globalCollectd == nil {
 		panic("Main collectd instance should not be accessed before being configured")
 	}
 
-	return collectdSingleton
+	return globalCollectd
+}
+
+func ensureWriteServerRunning(ipAddr string, port uint16) error {
+	if writeServer == nil {
+		var err error
+		writeServer, err = NewWriteServer(ipAddr, port)
+		if err != nil {
+			return err
+		}
+
+		if err := writeServer.Start(); err != nil {
+			return err
+		}
+
+		log.WithFields(log.Fields{
+			"ipAddr": ipAddr,
+			"port":   port,
+		}).Info("Started collectd write server")
+	}
+
+	return nil
 }
 
 // InitCollectd makes a new instance of a manager and initializes it, but does
@@ -78,7 +96,6 @@ func MainInstance() *Manager {
 func InitCollectd(conf *config.CollectdConfig) *Manager {
 	manager := &Manager{
 		conf:            conf,
-		activeMonitors:  make(map[types.MonitorID]types.Output),
 		genericJMXUsers: make(map[types.MonitorID]bool),
 		requestRestart:  make(chan struct{}),
 		logger:          log.WithField("collectdInstance", conf.InstanceName),
@@ -94,10 +111,16 @@ func ConfigureMainCollectd(conf *config.CollectdConfig) error {
 	localConf := *conf
 	localConf.InstanceName = "global"
 
-	if collectdSingleton == nil {
-		collectdSingleton = InitCollectd(&localConf)
+	if globalCollectd == nil {
+		globalCollectd = InitCollectd(&localConf)
+
+		err := ensureWriteServerRunning(conf.WriteServerIPAddr, conf.WriteServerPort)
+		if err != nil {
+			return errors.Wrap(err, "Could not start collectd write server")
+		}
+
 	}
-	cm := collectdSingleton
+	cm := globalCollectd
 
 	cm.configMutex.Lock()
 	defer cm.configMutex.Unlock()
@@ -123,7 +146,8 @@ func (cm *Manager) ConfigureFromMonitor(monitorID types.MonitorID, output types.
 	cm.configMutex.Lock()
 	defer cm.configMutex.Unlock()
 
-	cm.activeMonitors[monitorID] = output
+	writeServer.RegisterMonitor(monitorID, output)
+	cm.monitorCount++
 
 	// This is kind of ugly having to keep track of this but it allows us to
 	// load the GenericJMX plugin in a central place and then have each
@@ -148,7 +172,7 @@ func (cm *Manager) MonitorDidShutdown(monitorID types.MonitorID) {
 	// This is a bit hacky but it is to solve the race condition where the
 	// monitor "shuts down" in the agent but is still running in collectd and
 	// generating datapoints.  If datapoints come in after the monitor's output
-	// is lost from activeMonitors, then those datapoints can't be associated
+	// is lost from the write server, then those datapoints can't be associated
 	// with an Output interface and will be dropped, causing scary looking
 	// error messages. Blocking the monitor's Shutdown method until collectd is
 	// restarted is undesirable since it is called synchronously.  This defers
@@ -160,16 +184,17 @@ func (cm *Manager) MonitorDidShutdown(monitorID types.MonitorID) {
 		cm.configMutex.Lock()
 		defer cm.configMutex.Unlock()
 
-		delete(cm.activeMonitors, monitorID)
+		writeServer.UnregisterMonitor(monitorID)
+		cm.monitorCount--
 
-		if len(cm.activeMonitors) == 0 && cm.stop != nil {
+		if cm.monitorCount == 0 && cm.stop != nil {
 			close(cm.stop)
 			cm.deleteExistingConfig()
 			<-cm.terminated
 		}
 	}()
 
-	if len(cm.activeMonitors) > 1 {
+	if cm.monitorCount > 1 {
 		cm.RequestRestart()
 	}
 }
@@ -180,13 +205,10 @@ func (cm *Manager) MonitorDidShutdown(monitorID types.MonitorID) {
 // bit to batch together multiple back-to-back restarts.
 func (cm *Manager) RequestRestart() {
 	if cm.terminated == nil || utils.IsSignalChanClosed(cm.terminated) {
-		waitCh := make(chan struct{})
 		cm.terminated = make(chan struct{})
 		// This should only have to be called once for the lifetime of the
 		// agent.
-		go cm.manageCollectd(waitCh, cm.terminated)
-		// Wait for the write server to be started
-		<-waitCh
+		go cm.manageCollectd(cm.terminated)
 	}
 
 	cm.requestRestart <- struct{}{}
@@ -195,10 +217,7 @@ func (cm *Manager) RequestRestart() {
 // WriteServerURL returns the URL of the write server, in case monitors need to
 // know it (e.g. the signalfx-metadata plugin).
 func (cm *Manager) WriteServerURL() string {
-	// Just reuse the config struct's method for making a URL
-	conf := *cm.conf
-	conf.WriteServerPort = uint16(cm.writeServerPort)
-	return conf.WriteServerURL()
+	return cm.conf.WriteServerURL()
 }
 
 // Config returns the collectd config used by this instance of collectd manager
@@ -230,9 +249,8 @@ func (cm *Manager) PluginDir() string {
 
 // Manage the subprocess with a basic state machine.  This is a bit tricky
 // since we have config coming in asynchronously from multiple sources.  This
-// function should never return.  waitCh will be closed once the write server
-// is setup and right before it is actualy waiting for restart signals.
-func (cm *Manager) manageCollectd(initCh chan<- struct{}, terminated chan struct{}) {
+// function should never return.
+func (cm *Manager) manageCollectd(terminated chan struct{}) {
 	state := Uninitialized
 	// The collectd process manager
 	var cmd *exec.Cmd
@@ -245,17 +263,7 @@ func (cm *Manager) manageCollectd(initCh chan<- struct{}, terminated chan struct
 
 	cm.stop = make(chan struct{})
 
-	writeServer, err := cm.startWriteServer()
-	if err != nil {
-		cm.logger.WithError(err).Error("Could not start collectd write server")
-		state = Errored
-	} else {
-		cm.writeServerPort = writeServer.RunningPort()
-	}
-
 	cm.setCollectdVersionEnvVar()
-
-	close(initCh)
 
 	for {
 		cm.logger.Debugf("Collectd is now %s", state)
@@ -287,7 +295,7 @@ func (cm *Manager) manageCollectd(initCh chan<- struct{}, terminated chan struct
 			}
 
 		case Starting:
-			if err := cm.rerenderConf(writeServer.RunningPort()); err != nil {
+			if err := cm.rerenderConf(); err != nil {
 				cm.logger.WithError(err).Error("Could not render collectd.conf")
 				state = Stopped
 				continue
@@ -341,7 +349,6 @@ func (cm *Manager) manageCollectd(initCh chan<- struct{}, terminated chan struct
 
 		case Stopped:
 			restartDebouncedStop <- struct{}{}
-			writeServer.Shutdown()
 			close(terminated)
 			return
 		}
@@ -357,96 +364,7 @@ func (cm *Manager) deleteExistingConfig() {
 	}
 }
 
-func (cm *Manager) startWriteServer() (*WriteHTTPServer, error) {
-	writeServer, err := NewWriteHTTPServer(cm.conf.WriteServerIPAddr, cm.conf.WriteServerPort, cm.receiveDPs, cm.receiveEvents)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := writeServer.Start(); err != nil {
-		return nil, err
-	}
-
-	cm.logger.WithFields(log.Fields{
-		"ipAddr": cm.conf.WriteServerIPAddr,
-		"port":   writeServer.RunningPort(),
-	}).Info("Started collectd write server")
-
-	return writeServer, nil
-}
-
-func (cm *Manager) receiveDPs(dps []*datapoint.Datapoint) {
-	cm.configMutex.Lock()
-	defer cm.configMutex.Unlock()
-
-	for i := range dps {
-		var monitorID types.MonitorID
-		if id, ok := dps[i].Meta["monitorID"].(string); ok {
-			monitorID = types.MonitorID(id)
-		} else if id := dps[i].Dimensions["monitorID"]; id != "" {
-			monitorID = types.MonitorID(id)
-			delete(dps[i].Dimensions, "monitorID")
-		}
-
-		var output types.Output
-		if string(monitorID) == "" {
-			cm.logger.WithFields(log.Fields{
-				"monitorID": monitorID,
-				"datapoint": dps[i],
-			}).Error("Datapoint does not specify its monitor id, cannot process")
-			continue
-		} else {
-			output = cm.activeMonitors[monitorID]
-		}
-
-		if output == nil {
-			if output == nil {
-				cm.logger.WithFields(log.Fields{
-					"monitorID": monitorID,
-					"datapoint": dps[i],
-				}).Error("Datapoint has an unknown monitorID")
-				continue
-			}
-		}
-
-		output.SendDatapoint(dps[i])
-	}
-}
-
-func (cm *Manager) receiveEvents(events []*event.Event) {
-	cm.configMutex.Lock()
-	defer cm.configMutex.Unlock()
-
-	for i := range events {
-		var monitorID types.MonitorID
-		if id, ok := events[i].Properties["monitorID"].(string); ok {
-			monitorID = types.MonitorID(id)
-			delete(events[i].Properties, "monitorID")
-		} else if id := events[i].Dimensions["monitorID"]; id != "" {
-			monitorID = types.MonitorID(id)
-			delete(events[i].Dimensions, "monitorID")
-		}
-
-		if string(monitorID) == "" {
-			cm.logger.WithFields(log.Fields{
-				"event": spew.Sdump(events[i]),
-			}).Error("Event does not have a monitorID as either a dimension or property field, cannot send")
-			continue
-		}
-
-		output := cm.activeMonitors[monitorID]
-		if output == nil {
-			cm.logger.WithFields(log.Fields{
-				"monitorID": monitorID,
-			}).Error("Event has an unknown monitorID, cannot send")
-			continue
-		}
-
-		output.SendEvent(events[i])
-	}
-}
-
-func (cm *Manager) rerenderConf(writeHTTPPort int) error {
+func (cm *Manager) rerenderConf() error {
 	output := bytes.Buffer{}
 
 	cm.logger.WithFields(log.Fields{
@@ -456,7 +374,6 @@ func (cm *Manager) rerenderConf(writeHTTPPort int) error {
 	// Copy so that hash of config struct is consistent
 	conf := *cm.conf
 	conf.HasGenericJMXMonitor = len(cm.genericJMXUsers) > 0
-	conf.WriteServerPort = uint16(writeHTTPPort)
 
 	if err := CollectdTemplate.Execute(&output, &conf); err != nil {
 		return errors.Wrapf(err, "Failed to render collectd template")

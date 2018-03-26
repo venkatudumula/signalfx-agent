@@ -158,14 +158,15 @@ func (cm *Monitor) Configure(conf *Config) error {
 
 	collectdConf := *collectd.MainInstance().Config()
 
-	collectdConf.WriteServerPort = 0
-	collectdConf.WriteServerQuery = "?monitorID=" + string(conf.MonitorID)
 	collectdConf.InstanceName = "monitor-" + string(conf.MonitorID)
 	collectdConf.ReadThreads = utils.MinInt(len(conf.allTemplates()), 5)
 	collectdConf.WriteThreads = 1
 	collectdConf.WriteQueueLimitHigh = 10000
 	collectdConf.WriteQueueLimitLow = 10000
 	collectdConf.IntervalSeconds = conf.IntervalSeconds
+	collectdConf.ExtraDimensions = map[string]string{
+		"monitorID": string(conf.MonitorID),
+	}
 
 	cm.MonitorCore.SetCollectdInstance(collectd.InitCollectd(&collectdConf))
 

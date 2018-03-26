@@ -93,7 +93,12 @@ func (a *Agent) configure(conf *config.Config) {
 	//}
 
 	// The order of Configure calls is very important!
-	a.monitors.Configure(conf.Monitors, &conf.Collectd, conf.IntervalSeconds)
+	err := a.monitors.Configure(conf.Monitors, &conf.Collectd, conf.IntervalSeconds)
+	if err != nil {
+		log.WithError(err).Error("Could not configure monitors")
+		os.Exit(5)
+	}
+
 	a.observers.Configure(conf.Observers)
 	a.lastConfig = conf
 }

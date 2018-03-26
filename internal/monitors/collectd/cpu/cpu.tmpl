@@ -31,7 +31,7 @@ LoadPlugin aggregation
       PluginInstance "^cpu-.*"
     </Match>
     <Target "set">
-      MetaData "monitorID" "{{.MonitorID}}"
+      Host "[monitorID={{.MonitorID}}]"
     </Target>
   </Rule>
 </Chain>

@@ -4,12 +4,11 @@ BaseDir "{{ stripTrailingSlash .BundleDir }}/plugins/.."
 TypesDB "{{ stripTrailingSlash .BundleDir }}/plugins/collectd/types.db"
 PluginDir "{{ stripTrailingSlash .BundleDir }}/plugins/collectd"
 
-{{if .Hostname}}
-Hostname "{{.Hostname}}"
+# We use the hostname purely to add dimensions to all value lists coming out of
+this instance of collectd.  The host dimension gets added by the agent after
+datapoints are gotten from collectd.
+Hostname "{{ encodeDimsWithBrackets .ExtraDimensions }}"
 FQDNLookup false
-{{else}}
-FQDNLookup true
-{{end}}
 Interval {{ .IntervalSeconds }}
 Timeout {{ .Timeout }}
 ReadThreads {{ .ReadThreads }}
@@ -33,18 +32,27 @@ LoadPlugin target_set
   Target "write"
 </Chain>
 
+{{if .UseWriteHTTP }}
 <LoadPlugin "write_http">
    FlushInterval 2
 </LoadPlugin>
 <Plugin "write_http">
   <Node "SignalFx">
-    URL "{{.WriteServerURL}}{{.WriteServerQuery}}"
+    URL "{{.WriteServerURL}}"
     Format "JSON"
     Timeout 5000
     BufferSize 4096
     LogHttpError true
   </Node>
 </Plugin>
+{{else}}
+LoadPlugin "network"
+<Plugin "network">
+  Server "{{.WriteServerIPAddr}}" "{{.WriteServerPort}}"
+  SendDSNames true
+  DisableBuffering true
+</Plugin>
+{{end}}
 
 {{if .HasGenericJMXMonitor}}
 TypesDB "{{ pluginRoot }}/java/signalfx_types_db"

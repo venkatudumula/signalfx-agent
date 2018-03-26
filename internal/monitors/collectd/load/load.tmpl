@@ -6,7 +6,7 @@ LoadPlugin load
       Plugin "^load$" 
     </Match> 
     <Target "set"> 
-      MetaData "monitorID" "{{.MonitorID}}" 
+      Host "[monitorID={{.MonitorID}}]"
     </Target> 
   </Rule> 
 </Chain>

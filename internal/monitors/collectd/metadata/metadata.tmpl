@@ -20,14 +20,15 @@ TypesDB "{{ pluginRoot }}/signalfx/types.db.plugin"
   </Module>
 </Plugin>
 
+LoadPlugin target_replace
 
 <Chain "PostCache"> 
   <Rule "set_metadata_monitor_id"> 
     <Match "regex"> 
       Plugin "^signalfx-metadata$" 
     </Match> 
-    <Target "set"> 
-      MetaData "monitorID" "{{.MonitorID}}" 
+    <Target "replace"> 
+      TypeInstance "$" "[monitorID={{.MonitorID}}]"
     </Target> 
   </Rule> 
 </Chain>

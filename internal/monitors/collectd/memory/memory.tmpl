@@ -6,7 +6,7 @@ LoadPlugin memory
       Plugin "^memory$" 
     </Match> 
     <Target "set"> 
-      MetaData "monitorID" "{{.MonitorID}}" 
+      Host "[monitorID={{.MonitorID}}]"
     </Target> 
   </Rule> 
 </Chain>
