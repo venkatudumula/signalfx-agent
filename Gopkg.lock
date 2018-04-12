@@ -558,7 +558,7 @@
     "timekeeper",
     "web"
   ]
-  revision = "8321403a729d6c8fa60a3dcf2c60bf20f71f6062"
+  revision = "90c79c2915d089b1f3b524271d49e57b4c627537"
 
 [[projects]]
   name = "github.com/signalfx/metricproxy"
@@ -854,6 +854,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a6023d80dd7bd0b06216df606b4945731e9d3b1f5de09e60400e3463a355d2a4"
+  inputs-digest = "987efba6f05558781d6ba700d12ef1a5b463c093f67e1a95c239c50a5113c278"
   solver-name = "gps-cdcl"
   solver-version = 1

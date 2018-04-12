@@ -96,6 +96,10 @@ func (sw *SignalFxWriter) Configure(conf *config.WriterConfig) error {
 	}
 
 	sw.client.AuthToken = conf.SignalFxAccessToken
+	if conf.DimensionCacheResetIntervalSeconds > 0 {
+		sw.client.InitDimensionCache()
+	}
+
 	sw.dimPropClient.Token = conf.SignalFxAccessToken
 	sw.dimPropClient.APIURL = conf.APIURL
 
@@ -291,6 +295,9 @@ func (sw *SignalFxWriter) listenForDatapoints() {
 	}
 	initEventBuffer()
 
+	sendCycles := 0
+	resetCycleCount := sw.conf.DimensionCacheResetIntervalSeconds / sw.conf.DatapointSendIntervalSeconds
+
 	for {
 		select {
 
@@ -329,6 +336,14 @@ func (sw *SignalFxWriter) listenForDatapoints() {
 			if len(sw.dpBuffer) > 0 {
 				go sw.filterAndSendDatapoints(sw.dpBuffer)
 				initDPBuffer()
+			}
+
+			if resetCycleCount > 0 {
+				sendCycles++
+				if sendCycles >= resetCycleCount {
+					sw.client.ClearDimensionCache()
+					sendCycles = 0
+				}
 			}
 
 		case <-eventTicker.C:
