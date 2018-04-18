@@ -73,7 +73,7 @@
 
 [[constraint]]
   name = "github.com/signalfx/golib"
-  revision = "90c79c2915d089b1f3b524271d49e57b4c627537"
+  revision = "2c97d6889b3731539801e651a88785af18c5bec5"
 
 [[constraint]]
   name = "github.com/signalfx/metricproxy"
