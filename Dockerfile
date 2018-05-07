@@ -18,7 +18,6 @@ RUN cd vendor && find . -type d -not -empty | grep -v '\btest' | parallel go ins
 ###### Agent Build Image ########
 FROM ubuntu:16.04 as agent-builder
 
-# Cgo requires dep libraries present
 RUN apt update &&\
     apt install -y curl wget pkg-config
 
@@ -308,7 +307,7 @@ COPY --from=python-plugins /opt/collectd-python/ /plugins/collectd
 COPY --from=python-plugins /usr/lib/python2.7/ /lib/python2.7
 COPY --from=python-plugins /usr/local/lib/python2.7/ /lib/python2.7
 
-COPY neopy /neopy
+COPY pyrunner /pyrunner
 COPY scripts/umount-hostfs-non-persistent /bin/umount-hostfs-non-persistent
 
 RUN mkdir -p /run/collectd /var/run/ &&\

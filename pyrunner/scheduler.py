@@ -1,4 +1,7 @@
-
+"""
+Logic for scheduling reads across a shared threadpool
+"""
+from __future__ import absolute_import
 import logging
 from threading import Thread, Event, Lock
 import heapq
@@ -9,7 +12,7 @@ import sys
 class IntervalScheduler(object):
     """
     Facilitates executing a set of functions at some regular interval
-    across multiple threads.
+    across a shared set of threads.
 
     This implementation handles adding and removing scheduled functions at any
     interval.
@@ -33,7 +36,7 @@ class IntervalScheduler(object):
         self.new_earlier_event = Event()
         self.next_scheduled = sys.maxint
 
-    def add_thread(self):
+    def _add_thread(self):
         if len(self.threads) >= self.max_thread_count:
             return
         th = Thread(target=self._gather_metrics_thread)
@@ -65,7 +68,7 @@ class IntervalScheduler(object):
                 self.new_earlier_event.set()
 
             if len(self.heap) < self.max_thread_count:
-                self.add_thread()
+                self._add_thread()
 
         def cancel():
             if cancel.was_called:
@@ -99,9 +102,8 @@ class IntervalScheduler(object):
         occur earlier than the next scheduled gathering
         """
         heapq.heappush(self.heap, (when, func, interval_in_seconds))
-        logging.debug("Inserted %s into heap: %s" % ((when, func,
-                                                      interval_in_seconds),
-                                                     self.heap))
+        logging.debug("Inserted %s into heap: %s",
+                      (when, func, interval_in_seconds), self.heap)
         if when < self.next_scheduled:
             self.next_scheduled = when
             return True
@@ -118,6 +120,7 @@ class IntervalScheduler(object):
             with self.heap_lock:
                 try:
                     when, func, interval = heapq.heappop(self.heap)
+                    self.next_scheduled = when
                 except IndexError:
                     # There is nothing to do so shutdown this thread.  Another
                     # will be started up if we are under the max thread count
@@ -126,7 +129,12 @@ class IntervalScheduler(object):
                     logging.info("Nothing for gather thread to do, shutting down")
                     return
 
-            if not self._wait_until_gather(when, func, interval):
+            # If _wait_until_gather returns false then it isn't time to
+            # actually do the gathering because either 1) the scheduler is
+            # shutting down, or 2) there is another item scheduler earlier than
+            # what was previously scheduled -- so reschedule the current
+            # gathering and start over.
+            if not self._wait_until_gather(when):
                 with self.heap_lock:
                     self._schedule_gathering(when, func, interval)
                     continue
@@ -142,7 +150,7 @@ class IntervalScheduler(object):
                 self._schedule_gathering(interval + when, func, interval)
 
 
-    def _wait_until_gather(self, when, func, interval):
+    def _wait_until_gather(self, when):
         """
         Pauses the gather thread until either the gathering is supposed to happen or
         until a new earlier event was triggered, in which case all of the

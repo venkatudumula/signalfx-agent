@@ -6,10 +6,9 @@
 # covered by our monitor config, and the `instances` config roughly corresponds
 # to a "service" in our agent.
 
-# There does not appear to be the equivalent of a "static" check that
-# corresponds to our static monitors.  For checks that are intended to have
-# only one set of configuration for (e.g. the btrfs check), they do it by
-# enforcing that only one instance can be specified.
+# For checks that are intended to have only one set of configuration for (e.g.
+# the btrfs check), they do it by enforcing that only one instance can be
+# specified.
 
 # `init_config` appears to be a default config that applies to all instances,
 # to which the check will fall back to if the specific instance does not
@@ -108,13 +107,29 @@ class DataDogCheckFactory(object):
 check_factory = DataDogCheckFactory()
 
 class DataDogMonitorWrapper(MonitorWrapper):
-    def __init__(self, config, scheduler, send_datapoint):
-        super(DataDogMonitorWrapper, self).__init__(config, scheduler, send_datapoint)
+    def __init__(self, scheduler, send_datapoint):
+        super(DataDogMonitorWrapper, self).__init__(scheduler, send_datapoint)
+        self.cancel = None
 
+    def configure(self, config):
         # We assume all datadog monitor types start with "dd/..."
         check_name = config['Type'].split('/')[1]
 
         self.instance = check_factory.create(check_name, config)
+
+    def start_getting_metrics(self):
+        interval = self.config.get('intervalSeconds', DEFAULT_INTERVAL_SECONDS)
+        self.cancel = self.scheduler.run_on_interval(interval, self._get_and_send_metrics)
+
+    def _get_and_send_metrics(self):
+        logging.info("Pulling metrics for %s" % self.config['Type'])
+        for dp in self.get_datapoints():
+            print "sending dp"
+            self.send_datapoint(dp)
+
+    def shutdown(self):
+        if self.cancel:
+            self.cancel()
 
     def get_datapoints(self):
         self.instance.run()
