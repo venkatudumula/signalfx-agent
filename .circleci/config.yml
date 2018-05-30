@@ -213,7 +213,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir packaging/rpm; then
+          if ! scripts/changes-include-dir Dockerfile packaging/rpm; then
               echo "RPM packaging code has not changed, skipping tests!"
               exit 0
           fi
@@ -242,7 +242,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir packaging/deb; then
+          if ! scripts/changes-include-dir Dockerfile packaging/deb; then
               echo "Debian packaging code has not changed, skipping tests!"
               exit 0
           fi
@@ -271,7 +271,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir deployments/chef; then
+          if ! scripts/changes-include-dir Dockerfile deployments/chef; then
               echo "Chef cookbook code has not changed, skipping tests!"
               exit 0
           fi
@@ -296,7 +296,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir deployments/puppet; then
+          if ! scripts/changes-include-dir Dockerfile deployments/puppet; then
               echo "Puppet module code has not changed, skipping tests!"
               exit 0
           fi
@@ -321,7 +321,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir deployments/salt; then
+          if ! scripts/changes-include-dir Dockerfile deployments/salt; then
               echo "Salt module code has not changed, skipping tests!"
               exit 0
           fi
@@ -342,7 +342,7 @@ jobs:
       - run: |
           mkdir ~/testresults
 
-          if ! scripts/changes-include-dir deployments/ansible; then
+          if ! scripts/changes-include-dir Dockerfile deployments/ansible; then
               echo "Ansible playbook code has not changed, skipping tests!"
               exit 0
           fi
