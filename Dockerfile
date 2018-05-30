@@ -16,7 +16,7 @@ RUN cd vendor && find . -type d -not -empty | grep -v '\btest' | parallel go ins
 
 
 ###### Agent Build Image ########
-FROM ubuntu:16.04 as agent-builder
+FROM ubuntu:18.04 as agent-builder
 
 # Cgo requires dep libraries present
 RUN apt update &&\
@@ -46,7 +46,7 @@ RUN AGENT_VERSION=${agent_version} make signalfx-agent &&\
     mv signalfx-agent /usr/bin/signalfx-agent
 
 ###### Collectd builder image ######
-FROM ubuntu:16.04 as collectd
+FROM ubuntu:18.04 as collectd
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -57,7 +57,6 @@ RUN sed -i -e '/^deb-src/d' /etc/apt/sources.list &&\
       dpkg \
       net-tools \
       openjdk-8-jdk \
-      python-software-properties \
 	  software-properties-common \
       wget \
       autoconf \
@@ -137,7 +136,7 @@ RUN echo "#!/bin/bash" > /usr/src/collectd/version-gen.sh &&\
 WORKDIR /usr/src/collectd
 
 ARG extra_cflags="-O2"
-ENV CFLAGS "-Wall -fPIC $extra_cflags"
+ENV CFLAGS "-Wall -Wno-error=deprecated-declarations -Wno-error=format-truncation -fPIC $extra_cflags"
 ENV CXXFLAGS $CFLAGS
 
 # In the bundle, the java plugin will live in /plugins/collectd and the JVM
@@ -193,7 +192,7 @@ RUN /opt/collect-libs /opt/deps /usr/sbin/collectd /usr/lib/collectd/
 
 
 ###### Python Plugin Image ######
-FROM ubuntu:16.04 as python-plugins
+FROM ubuntu:18.04 as python-plugins
 
 RUN apt update &&\
     apt install -y git python-pip wget curl
@@ -226,7 +225,7 @@ RUN mkdir -p /opt/collectd-python &&\
 RUN find /usr/lib/python2.7 /usr/local/lib/python2.7/dist-packages -name "*.pyc" | xargs rm
 
 ####### Extra packages that don't make sense to pull down in any other stage ########
-FROM ubuntu:16.04 as extra-packages
+FROM ubuntu:18.04 as extra-packages
 
 RUN apt update &&\
     apt install -y \
@@ -286,7 +285,7 @@ CMD ["/bin/signalfx-agent"]
 
 COPY --from=collectd /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=extra-packages /lib/x86_64-linux-gnu/ld-2.23.so /lib64/ld-linux-x86-64.so.2
+COPY --from=extra-packages /lib/x86_64-linux-gnu/ld-2.27.so /lib64/ld-linux-x86-64.so.2
 COPY --from=extra-packages /opt/jvm/ /jvm
 COPY --from=extra-packages /opt/signalfx_types_db /plugins/collectd/java/
 COPY --from=extra-packages /opt/deps/ /lib
@@ -326,7 +325,7 @@ WORKDIR /
 # the build tools for building collectd and the go agent, along with some other
 # useful utilities.  The agent image is copied from the final-image stage to
 # the /agent dir in here and the SIGNALFX_BUNDLE_DIR is set to point to that.
-FROM ubuntu:16.04 as dev-extras
+FROM ubuntu:18.04 as dev-extras
 
 RUN apt update &&\
     apt install -y \
@@ -377,7 +376,7 @@ COPY --from=final-image / /bundle/
 COPY ./ ./
 
 ####### Pandoc Converter ########
-FROM ubuntu:16.04 as pandoc-converter
+FROM ubuntu:18.04 as pandoc-converter
 
 RUN apt update &&\
     apt install -y pandoc
