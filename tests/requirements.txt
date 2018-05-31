@@ -3,8 +3,8 @@ docker==3.0.1
 protobuf==3.5.1
 pytest==3.4.0
 pytest-xdist==1.22.0
-pyyaml
-netifaces
-kubernetes
-pytest-html
-semver
+pyyaml==3.12
+netifaces==0.10.7
+kubernetes==6.0.0
+pytest-html==1.18.0
+semver==2.8.0
