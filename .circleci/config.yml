@@ -221,9 +221,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y python3-dev
           curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
           sudo python3 get-pip.py
-          #sudo apt-get update && sudo apt-get install -y python3-pip
-          #sudo pip3 install --upgrade 'pip==10.0.1'
-          #sudo pip3 install --upgrade setuptools
           sudo pip3 install -r tests/requirements.txt
 
           export PULL_CACHE=yes
@@ -255,9 +252,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y python3-dev
           curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
           sudo python3 get-pip.py
-          #sudo apt-get update && sudo apt-get install -y python3-pip
-          #sudo pip3 install --upgrade 'pip==10.0.1'
-          #sudo pip3 install --upgrade setuptools
           sudo pip3 install -r tests/requirements.txt
 
           export PULL_CACHE=yes
