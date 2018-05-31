@@ -219,6 +219,7 @@ jobs:
           fi
 
           sudo apt-get update && sudo apt-get install -y python3-pip
+          sudo pip3 install --upgrade 'pip==10.0.1'
           sudo pip3 install -r tests/requirements.txt
 
           export PULL_CACHE=yes
@@ -248,6 +249,7 @@ jobs:
           fi
 
           sudo apt-get update && sudo apt-get install -y python3-pip
+          sudo pip3 install --upgrade 'pip==10.0.1'
           sudo pip3 install -r tests/requirements.txt
 
           export PULL_CACHE=yes
