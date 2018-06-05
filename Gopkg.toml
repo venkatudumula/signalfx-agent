@@ -74,7 +74,7 @@
 
 [[constraint]]
   name = "github.com/signalfx/golib"
-  revision = "8321403a729d6c8fa60a3dcf2c60bf20f71f6062"
+  revision = "888f2abc6e69adbac26b049b637a41d12b4f97e1"
 
 [[constraint]]
   name = "github.com/signalfx/metricproxy"
@@ -142,3 +142,8 @@
 [[constraint]]
   name = "github.com/Microsoft/go-winio"
   revision = "ab35fc04b6365e8fcb18e6e9e41ea4a02b10b175"
+
+[[constraint]]
+  name = "github.com/influxdata/telegraf"
+  revision = "69e65e96875f7eb2076f5b2f18913226b39c42ef"
+  source = "github.com/signalfx/telegraf"
