@@ -47,6 +47,7 @@ func TestImmediateEmitter_Emit(t *testing.T) {
 		excludeData        []string
 		excludeTag         []string
 		addTag             map[string]string
+		nameMap            map[string]string
 	}
 	ts := time.Now()
 	tests := []struct {
@@ -55,6 +56,41 @@ func TestImmediateEmitter_Emit(t *testing.T) {
 		args   args
 		want   *testOutput
 	}{
+		{
+			name: "emit datapoint with remapped name",
+			fields: fields{
+				Output: &testOutput{
+					Datapoints: []*datapoint.Datapoint{},
+				},
+			},
+			args: args{
+				measurement: "name",
+				fields: map[string]interface{}{
+					"fieldname": 5,
+				},
+				tags: map[string]string{
+					"dim1Key": "dim1Val",
+				},
+				metricType: datapoint.Gauge,
+				t:          []time.Time{ts},
+				nameMap: map[string]string{
+					"name.fieldname": "renamed.metric",
+				},
+			},
+			want: &testOutput{
+				Datapoints: []*datapoint.Datapoint{
+					datapoint.New(
+						"renamed.metric",
+						map[string]string{
+							"dim1Key": "dim1Val",
+							"plugin":  "name",
+						},
+						datapoint.NewIntValue(int64(5)),
+						datapoint.Gauge,
+						ts),
+				},
+			},
+		},
 		{
 			name: "emit datapoint without plugin tag",
 			fields: fields{
@@ -374,9 +410,8 @@ func TestImmediateEmitter_Emit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			I := NewEmitter()
-			I.Logger = log.NewEntry(log.New())
-			I.Output = tt.fields.Output
+			I := NewEmitter(tt.fields.Output, log.NewEntry(log.New()))
+			I.RenameMetrics(tt.args.nameMap)
 			I.AddTags(tt.args.addTag)
 			I.IncludeEvents(tt.args.includeEvent)
 			I.ExcludeData(tt.args.excludeData)

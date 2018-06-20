@@ -327,6 +327,17 @@
   revision = "3de563c3dc08a7504131e9d63f678b7d1c3e85d7"
 
 [[projects]]
+  name = "github.com/influxdata/telegraf"
+  packages = [
+    ".",
+    "internal",
+    "plugins/inputs",
+    "plugins/inputs/win_perf_counters"
+  ]
+  revision = "f4d22dd43992d80f0f6d58affa33d9466c447144"
+  version = "1.7.0"
+
+[[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
   revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
@@ -588,8 +599,17 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/stretchr/objx"
+  packages = ["."]
+  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
+  version = "v0.1.1"
+
+[[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert"]
+  packages = [
+    "assert",
+    "mock"
+  ]
   revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
   version = "v1.1.4"
 
@@ -598,6 +618,11 @@
   packages = ["codec"]
   revision = "9831f2c3ac1068a78f50999a30db84270f647af6"
   version = "v1.1"
+
+[[projects]]
+  name = "github.com/ulule/deepcopier"
+  packages = ["."]
+  revision = "ca99b135e50f526fde9cd88705f0ff2f3f95b77c"
 
 [[projects]]
   name = "github.com/x-cray/logrus-prefixed-formatter"
@@ -860,6 +885,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fc10246d95269779d43157edd538b71bbac59ee891ce362d5306039814f37a7f"
+  inputs-digest = "8d230893fb971961c24a16f783da3d30f4c4d735d50a8e49f52c319683f90524"
   solver-name = "gps-cdcl"
   solver-version = 1
