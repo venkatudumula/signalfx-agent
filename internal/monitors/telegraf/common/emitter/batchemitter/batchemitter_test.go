@@ -103,6 +103,10 @@ func TestImmediateEmitter_Emit(t *testing.T) {
 					t.Errorf("length of out events (%d) != desired len (%d)", len(I.Output.(*testOutput).Props), len(tt.want.Props))
 				}
 			}
+			I.Reset()
+			if len(I.Measurements) != 0 {
+				t.Errorf("measurements were not properly reset")
+			}
 		})
 	}
 }
