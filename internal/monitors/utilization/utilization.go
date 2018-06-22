@@ -1,12 +1,14 @@
 package utilization
 
 import (
+	log "github.com/sirupsen/logrus"
+
 	"github.com/signalfx/signalfx-agent/internal/core/config"
 	"github.com/signalfx/signalfx-agent/internal/monitors"
 	"github.com/signalfx/signalfx-agent/internal/monitors/types"
 )
 
-const monitorType = "utiliziation"
+const monitorType = "utilization"
 
 // MONITOR(utilization): This monitor reports utilization metrics for Windows
 // Hosts.
