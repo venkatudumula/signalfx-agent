@@ -38,24 +38,28 @@ references:
       command: |
         mkdir ~/testresults
         mkdir -p /tmp/scratch
-        pytest \
-            -n4 \
-            -m "$PYTEST_MARKERS" \
-            --exitfirst \
-            --verbose \
-            --junitxml=~/testresults/k8s_integration_tests.xml \
-            --html=~/testresults/k8s_integration_tests.html \
-            --self-contained-html \
-            --k8s-version="$K8S_VERSION" \
-            --k8s-observers="$K8S_OBSERVERS" \
-            --k8s-timeout=300 \
-            --k8s-test-timeout=120 \
-            --k8s-agent-name=quay.io/signalfx/signalfx-agent-dev \
-            --k8s-agent-tag=3.3.0-beta1 \
-            tests || true
-        if grep 'exception caught' ~/testresults/k8s_integration_tests.xml; then
-            exit 1
-        fi
+        while [ 0 ]; do
+            pytest \
+                -n4 \
+                -m "$PYTEST_MARKERS" \
+                --exitfirst \
+                --verbose \
+                --junitxml=~/testresults/k8s_integration_tests.xml \
+                --html=~/testresults/k8s_integration_tests.html \
+                --self-contained-html \
+                --k8s-version="$K8S_VERSION" \
+                --k8s-observers="$K8S_OBSERVERS" \
+                --k8s-timeout=300 \
+                --k8s-test-timeout=120 \
+                --k8s-agent-name=quay.io/signalfx/signalfx-agent-dev \
+                --k8s-agent-tag=3.3.0-beta1 \
+                tests || true
+            docker rm -fv minikube || true
+            rm -f ~/testresults/*
+            if grep 'exception caught' ~/testresults/k8s_integration_tests.xml; then
+                exit 1
+            fi
+        done
 
 jobs:
   build:
