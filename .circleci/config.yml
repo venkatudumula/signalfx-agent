@@ -36,9 +36,9 @@ references:
     run:
       no_output_timeout: 30m
       command: |
-        mkdir ~/testresults
         mkdir -p /tmp/scratch
         while [ 0 ]; do
+            mkdir ~/testresults
             pytest \
                 -n4 \
                 -m "$PYTEST_MARKERS" \
@@ -54,11 +54,13 @@ references:
                 --k8s-agent-name=quay.io/signalfx/signalfx-agent-dev \
                 --k8s-agent-tag=3.3.0-beta1 \
                 tests || true
-            docker rm -fv minikube || true
-            rm -f ~/testresults/*
-            if grep 'exception caught' ~/testresults/k8s_integration_tests.xml; then
-                exit 1
+            if [ -f ~/testresults/k8s_integration_tests.xml ]; then
+                if grep 'exception caught' ~/testresults/k8s_integration_tests.xml; then
+                    exit 1
+                fi
             fi
+            docker rm -fv minikube || true
+            rm -rf ~/testresults/ || true
         done
 
 jobs:
