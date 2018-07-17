@@ -50,7 +50,7 @@ references:
                 --k8s-version="$K8S_VERSION" \
                 --k8s-observers="$K8S_OBSERVERS" \
                 --k8s-timeout=300 \
-                --k8s-test-timeout=120 \
+                --k8s-test-timeout=300 \
                 --k8s-agent-name=quay.io/signalfx/signalfx-agent-dev \
                 --k8s-agent-tag=3.3.0-beta1 \
                 tests
