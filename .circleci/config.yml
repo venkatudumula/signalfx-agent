@@ -40,7 +40,7 @@ references:
         while [ 0 ]; do
             mkdir ~/testresults
             pytest \
-                -n4 \
+                -n8 \
                 -m "$PYTEST_MARKERS" \
                 --exitfirst \
                 --verbose \
