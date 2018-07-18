@@ -52,8 +52,8 @@ references:
                 --k8s-observers="$K8S_OBSERVERS" \
                 --k8s-timeout=300 \
                 --k8s-test-timeout=300 \
-                --k8s-agent-name=quay.io/signalfx/signalfx-agent-dev \
-                --k8s-agent-tag=3.3.0-beta1 \
+                --k8s-agent-name=quay.io/signalfx/signalfx-agent \
+                --k8s-agent-tag=3.3.0 \
                 tests
             if [ -f ~/testresults/k8s_integration_tests.xml ]; then
                 if grep 'exception caught' ~/testresults/k8s_integration_tests.xml; then
