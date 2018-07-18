@@ -36,11 +36,12 @@ references:
     run:
       no_output_timeout: 30m
       command: |
+        set -x
         mkdir -p /tmp/scratch
         while [ 0 ]; do
             mkdir ~/testresults
             pytest \
-                -n8 \
+                -n4 \
                 -m "$PYTEST_MARKERS" \
                 --exitfirst \
                 --verbose \
