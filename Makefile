@@ -1,6 +1,6 @@
 RUN_CONTAINER := neo-agent-tmp
 COLLECTD_VERSION := 5.8.0-sfx0
-COLLECTD_COMMIT := 67fe36b0d5c88054be3b975afc2707db0ecc9022
+COLLECTD_COMMIT := 79065461c9bad3957b351ce147af8b4c0fc27ea4
 .PHONY: check
 check: lint vet test
 
@@ -70,7 +70,7 @@ run-shell:
 dev-image:
 ifeq ($(OS),Windows_NT)
 	powershell -Command . $(CURDIR)\scripts\windows\common.ps1; do_docker_build signalfx-agent-dev latest dev-extras
-else 
+else
 	bash -ec "COLLECTD_VERSION=$(COLLECTD_VERSION) COLLECTD_COMMIT=$(COLLECTD_COMMIT) && source scripts/common.sh && do_docker_build signalfx-agent-dev latest dev-extras"
 endif
 
