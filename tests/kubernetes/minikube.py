@@ -59,12 +59,9 @@ class Minikube:
 
     def connect(self, name, timeout, version=None):
         print("\nConnecting to %s container ..." % name)
-        start_time = time.time()
         assert wait_for(p(container_is_running, self.host_client, name), timeout_seconds=timeout), "timed out waiting for container %s!" % name
         self.container = self.host_client.containers.get(name)
-        print("\nwaited %d seconds for container to be running" % (time.time() - start_time))
         self.load_kubeconfig(timeout=timeout)
-        print("\nwaited %d seconds for kubeconfig" % (time.time() - start_time))
         self.client = self.get_client()
         self.name = name
         self.version = version
@@ -98,7 +95,6 @@ class Minikube:
                 }
             }
         print("\nDeploying minikube %s cluster ..." % self.version)
-        start_time = time.time()
         image, logs = self.host_client.images.build(
             path=os.path.join(TEST_SERVICES_DIR, 'minikube'),
             buildargs={"MINIKUBE_VERSION": MINIKUBE_VERSION},
@@ -109,10 +105,8 @@ class Minikube:
             image.id,
             detach=True,
             **options)
-        print("\nwaited %d seconds for container to be running" % (time.time() - start_time))
         self.name = self.container.name
         self.load_kubeconfig(timeout=timeout)
-        print("\nwaited %d seconds for kubeconfig" % (time.time() - start_time))
         self.client = self.get_client()
 
     def start_registry(self):
@@ -129,23 +123,34 @@ class Minikube:
     def build_image(self, dockerfile_dir, build_opts={}):
         if not self.client:
             self.get_client()
+        assert "tag" in build_opts.keys(), "\"tag\" not defined in build_opts!"
+        try:
+            name, tag = build_opts["tag"].rsplit(":", 1)
+            del build_opts["tag"]
+        except ValueError as e:
+            raise ValueError("%s\nFailed to get name:tag from \"%s\"!" % (str(e), build_opts["tag"]))
+        if has_docker_image(self.client, name, tag):
+            print("\nImage \"%s:%s\" already exists" % (name, tag))
+            return
+        print("\nBuilding image \"%s:%s\" from %s ..." % (name, tag, dockerfile_dir))
+        max_attempts = 3
         attempts = 1
-        while attempts <= 3:
+        while attempts <= max_attempts:
             try:
                 self.client.images.build(
                     path=dockerfile_dir,
                     rm=True,
                     forcerm=True,
+                    tag="%s:%s" % (name, tag),
                     **build_opts)
                 break
             except docker.errors.BuildError as e:
                 print("exception caught: %s" % str(e))
-                if attempts == 3:
+                if attempts == max_attempts:
                     raise e
                 else:
                     time.sleep(5)
                     attempts += 1
-                
 
     @contextmanager
     def deploy_k8s_yamls(self, yamls=[], namespace=None, timeout=180):
