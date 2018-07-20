@@ -104,6 +104,10 @@ func TestImmediateEmitter_Emit(t *testing.T) {
 				if len(I.Output.(*testOutput).Props) != len(tt.want.Props) {
 					t.Errorf("length of out events (%d) != desired len (%d)", len(I.Output.(*testOutput).Props), len(tt.want.Props))
 				}
+				return
+			}
+			if len(I.Measurements) != 0 {
+				t.Error("batch emitter was not reset after emitting batch")
 			}
 		})
 	}

@@ -42,6 +42,7 @@ func (b *BatchEmitter) Send() {
 		b.BaseEmitter.Add(m.Measurement, m.Fields, m.Tags, m.MetricType,
 			m.OriginalMetricType, m.Timestamps...)
 	}
+	b.Measurements = b.Measurements[:0]
 	b.lock.Unlock()
 }
 
